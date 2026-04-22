@@ -36,6 +36,10 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         .game-container::before {
@@ -545,6 +549,7 @@
                 timeSinceLastDamage: 0,
                 isHealing: false,
                 healingThreshold: 50,
+                healingAccumulator: 0,
                 
                 enemies: [],
                 playerBullets: [],
@@ -629,6 +634,7 @@
                     this.lastDamageTime = Date.now();
                     this.timeSinceLastDamage = 0;
                     this.isHealing = false;
+                    this.healingAccumulator = 0;
                     this.enemies = [];
                     this.playerBullets = [];
                     this.enemyBullets = [];
@@ -869,7 +875,12 @@
                     
                     if (this.timeSinceLastDamage >= this.healingThreshold && this.currentHealth < this.maxHealth) {
                         this.isHealing = true;
-                        this.currentHealth = Math.min(this.maxHealth, this.currentHealth + 50 * deltaTime);
+                        this.healingAccumulator += 50 * deltaTime;
+                        
+                        while (this.healingAccumulator >= 1) {
+                            this.currentHealth = Math.min(this.maxHealth, this.currentHealth + 1);
+                            this.healingAccumulator -= 1;
+                        }
                     } else {
                         this.isHealing = false;
                     }
@@ -908,6 +919,8 @@
                 handleMouseDown(event) {
                     if (this.gameState !== 'playing') return;
                     
+                    event.preventDefault();
+                    
                     if (event.button === 0) {
                         this.isFiring = true;
                         this.mouseControl = true;
@@ -923,19 +936,11 @@
                         this.keys[key] = true;
                         this.mouseControl = false;
                     }
-                    
-                    if (key === ' ') {
-                        event.preventDefault();
-                        this.isFiring = true;
-                    }
                 },
                 handleKeyUp(event) {
                     const key = event.key.toLowerCase();
                     if (key in this.keys) {
                         this.keys[key] = false;
-                    }
-                    if (key === ' ') {
-                        this.isFiring = false;
                     }
                 },
                 gameOver() {
