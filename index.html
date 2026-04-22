@@ -963,6 +963,9 @@
                     this.gameState = 'gameover';
                 },
                 backToMenu() {
+                    if (this.gameState === 'playing') {
+                        this.saveRecord(this.currentScore);
+                    }
                     this.stopGameLoop();
                     this.gameState = 'menu';
                 }
