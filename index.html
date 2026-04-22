@@ -699,17 +699,19 @@
                 updatePlayer(deltaTime) {
                     const speed = 400 * deltaTime;
                     
-                    if (this.mouseControl) {
+                    const hasKeyboardInput = this.keys.w || this.keys.a || this.keys.s || this.keys.d;
+                    
+                    if (hasKeyboardInput) {
+                        if (this.keys.w) this.playerY -= speed;
+                        if (this.keys.s) this.playerY += speed;
+                        if (this.keys.a) this.playerX -= speed;
+                        if (this.keys.d) this.playerX += speed;
+                    } else if (this.mouseControl) {
                         const targetX = this.mouseX - this.playerWidth / 2;
                         const targetY = this.mouseY - this.playerHeight / 2;
                         
                         this.playerX += (targetX - this.playerX) * 0.2;
                         this.playerY += (targetY - this.playerY) * 0.2;
-                    } else {
-                        if (this.keys.w) this.playerY -= speed;
-                        if (this.keys.s) this.playerY += speed;
-                        if (this.keys.a) this.playerX -= speed;
-                        if (this.keys.d) this.playerX += speed;
                     }
                     
                     this.playerX = Math.max(0, Math.min(this.containerWidth - this.playerWidth, this.playerX));
@@ -980,6 +982,14 @@
                         this.isFiring = true;
                         this.mouseControl = true;
                     }
+                });
+                
+                document.addEventListener('keydown', (event) => {
+                    this.handleKeyDown(event);
+                });
+                
+                document.addEventListener('keyup', (event) => {
+                    this.handleKeyUp(event);
                 });
             },
             beforeDestroy() {
