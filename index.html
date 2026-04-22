@@ -460,7 +460,7 @@
                     <div class="shield-cooldown">
                         <div class="shield-cooldown-fill" :style="{ width: shieldCooldownPercentage + '%' }"></div>
                     </div>
-                    <div v-if="shieldActive">激活中</div>
+                    <div v-if="shieldActive">{{ Math.ceil(shieldDuration) }}s</div>
                     <div v-else-if="shieldCooldown > 0">{{ Math.ceil(shieldCooldown) }}s</div>
                     <div v-else>就绪</div>
                 </div>
@@ -579,6 +579,7 @@
                 fireRate: 150,
                 lastFireTime: 0,
                 isFiring: false,
+                isMouseDown: false,
                 
                 enemyFireRate: 2000
             },
@@ -587,7 +588,9 @@
                     return (this.currentHealth / this.maxHealth) * 100;
                 },
                 shieldCooldownPercentage() {
-                    if (this.shieldActive) return 100;
+                    if (this.shieldActive) {
+                        return (this.shieldDuration / 3) * 100;
+                    }
                     if (this.shieldCooldown > 0) {
                         return ((this.shieldCooldownMax - this.shieldCooldown) / this.shieldCooldownMax) * 100;
                     }
@@ -646,6 +649,7 @@
                     this.explosionIdCounter = 0;
                     this.lastFireTime = 0;
                     this.isFiring = false;
+                    this.isMouseDown = false;
                 },
                 startGameLoop() {
                     let lastTime = Date.now();
@@ -922,6 +926,7 @@
                     event.preventDefault();
                     
                     if (event.button === 0) {
+                        this.isMouseDown = true;
                         this.isFiring = true;
                         this.mouseControl = true;
                     } else if (event.button === 2) {
@@ -929,6 +934,13 @@
                     }
                 },
                 handleKeyDown(event) {
+                    if (event.key === 'Escape') {
+                        if (this.gameState === 'playing' || this.gameState === 'gameover') {
+                            this.backToMenu();
+                        }
+                        return;
+                    }
+                    
                     if (this.gameState !== 'playing') return;
                     
                     const key = event.key.toLowerCase();
@@ -949,6 +961,7 @@
                     this.gameState = 'gameover';
                 },
                 backToMenu() {
+                    this.stopGameLoop();
                     this.gameState = 'menu';
                 }
             },
@@ -957,12 +970,16 @@
                 
                 document.addEventListener('mouseup', (event) => {
                     if (event.button === 0) {
+                        this.isMouseDown = false;
                         this.isFiring = false;
                     }
                 });
                 
-                this.$refs.gameContainer.addEventListener('mouseleave', () => {
-                    this.isFiring = false;
+                this.$refs.gameContainer.addEventListener('mouseenter', () => {
+                    if (this.isMouseDown && this.gameState === 'playing') {
+                        this.isFiring = true;
+                        this.mouseControl = true;
+                    }
                 });
             },
             beforeDestroy() {
