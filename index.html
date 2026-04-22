@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞机大战</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #app {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(180deg, #000428 0%, #004e92 100%);
+            border: 3px solid #00d4ff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent);
+            background-size: 200px 200px;
+            animation: twinkle 5s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+        }
+
+        .menu-title {
+            font-size: 48px;
+            color: #00d4ff;
+            text-shadow: 0 0 20px #00d4ff;
+            margin-bottom: 50px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .menu-btn {
+            padding: 15px 50px;
+            font-size: 20px;
+            background: linear-gradient(90deg, #00d4ff, #0085ff);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .menu-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+        }
+
+        .records-container {
+            max-height: 300px;
+            overflow-y: auto;
+            width: 80%;
+            margin: 20px 0;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #fff;
+        }
+
+        .records-table th,
+        .records-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .records-table th {
+            color: #00d4ff;
+            font-size: 18px;
+        }
+
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+
+        .game-over-stats {
+            text-align: center;
+            color: #fff;
+            margin: 20px 0;
+        }
+
+        .final-score {
+            font-size: 36px;
+            color: #00d4ff;
+            text-shadow: 0 0 20px #00d4ff;
+        }
+
+        .player {
+            position: absolute;
+            width: 50px;
+            height: 60px;
+            transition: none;
+        }
+
+        .player-body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .player-fuselage {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 40px;
+            background: linear-gradient(180deg, #00ff88, #00aa55);
+            border-radius: 10px 10px 5px 5px;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .player-wing-left {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 25px;
+            height: 15px;
+            background: linear-gradient(90deg, #00aa55, #00ff88);
+            border-radius: 5px 0 0 10px;
+        }
+
+        .player-wing-right {
+            position: absolute;
+            top: 20px;
+            right: 0;
+            width: 25px;
+            height: 15px;
+            background: linear-gradient(90deg, #00ff88, #00aa55);
+            border-radius: 0 5px 10px 0;
+        }
+
+        .player-engine {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 20px;
+            background: linear-gradient(180deg, #ff6600, #ffaa00, #ffff00);
+            border-radius: 0 0 10px 10px;
+            animation: engine-flame 0.1s infinite;
+        }
+
+        @keyframes engine-flame {
+            0%, 100% { height: 20px; opacity: 1; }
+            50% { height: 15px; opacity: 0.8; }
+        }
+
+        .shield {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #00ffff;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.2), transparent);
+            animation: shield-pulse 0.5s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shield-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .enemy {
+            position: absolute;
+            width: 45px;
+            height: 50px;
+        }
+
+        .enemy-body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .enemy-fuselage {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 18px;
+            height: 35px;
+            background: linear-gradient(180deg, #ff4444, #aa0000);
+            border-radius: 5px 5px 10px 10px;
+            box-shadow: 0 0 10px #ff4444;
+        }
+
+        .enemy-wing-left {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 22px;
+            height: 12px;
+            background: linear-gradient(90deg, #aa0000, #ff4444);
+            border-radius: 10px 0 0 5px;
+        }
+
+        .enemy-wing-right {
+            position: absolute;
+            top: 15px;
+            right: 0;
+            width: 22px;
+            height: 12px;
+            background: linear-gradient(90deg, #ff4444, #aa0000);
+            border-radius: 0 10px 5px 0;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 6px;
+            height: 20px;
+            background: linear-gradient(180deg, #ffff00, #ff8800);
+            border-radius: 3px;
+            box-shadow: 0 0 10px #ffff00;
+        }
+
+        .enemy-bullet {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #ff0000, #880000);
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffff00, #ff8800, #ff4400, transparent);
+            animation: explode 0.5s forwards;
+            pointer-events: none;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            font-size: 16px;
+            z-index: 50;
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff8800, #00ff88);
+            transition: width 0.3s;
+        }
+
+        .score {
+            font-size: 24px;
+            color: #00d4ff;
+            text-shadow: 0 0 10px #00d4ff;
+        }
+
+        .shield-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shield-cooldown {
+            width: 100px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .shield-cooldown-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #0088ff);
+            transition: width 0.1s;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            z-index: 50;
+        }
+
+        .healing-indicator {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            color: #00ff88;
+            font-size: 14px;
+            text-shadow: 0 0 10px #00ff88;
+            animation: healing-pulse 1s infinite;
+            z-index: 50;
+        }
+
+        @keyframes healing-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .no-records {
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="game-container" 
+             ref="gameContainer"
+             @mousemove="handleMouseMove"
+             @mousedown="handleMouseDown"
+             @contextmenu.prevent
+             tabindex="0"
+             @keydown="handleKeyDown"
+             @keyup="handleKeyUp">
+            
+            <div class="menu-screen" v-if="gameState === 'menu'">
+                <h1 class="menu-title">飞机大战</h1>
+                <button class="menu-btn" @click="startGame">开始游戏</button>
+                <button class="menu-btn" @click="showRecords = true">游戏记录</button>
+                
+                <div class="records-container" v-if="showRecords">
+                    <table class="records-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>得分</th>
+                                <th>日期</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="gameRecords.length === 0">
+                                <td colspan="3" class="no-records">暂无游戏记录</td>
+                            </tr>
+                            <tr v-for="(record, index) in gameRecords" :key="index"
+                                :class="'rank-' + (index + 1)">
+                                <td>{{ index + 1 }}</td>
+                                <td>{{ record.score }}</td>
+                                <td>{{ record.date }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <button class="menu-btn" @click="showRecords = false" v-if="showRecords">返回</button>
+            </div>
+
+            <div class="menu-screen" v-if="gameState === 'gameover'">
+                <h1 class="menu-title">游戏结束</h1>
+                <div class="game-over-stats">
+                    <p class="final-score">得分: {{ currentScore }}</p>
+                </div>
+                <button class="menu-btn" @click="startGame">再来一局</button>
+                <button class="menu-btn" @click="backToMenu">返回菜单</button>
+            </div>
+
+            <div class="hud" v-if="gameState === 'playing'">
+                <div>
+                    <div class="health-bar">
+                        <div class="health-fill" :style="{ width: healthPercentage + '%' }"></div>
+                    </div>
+                    <div style="margin-top: 5px;">生命值: {{ currentHealth }} / 800</div>
+                </div>
+                
+                <div class="score">得分: {{ currentScore }}</div>
+                
+                <div class="shield-status">
+                    <div>保护罩:</div>
+                    <div class="shield-cooldown">
+                        <div class="shield-cooldown-fill" :style="{ width: shieldCooldownPercentage + '%' }"></div>
+                    </div>
+                    <div v-if="shieldActive">激活中</div>
+                    <div v-else-if="shieldCooldown > 0">{{ Math.ceil(shieldCooldown) }}s</div>
+                    <div v-else>就绪</div>
+                </div>
+            </div>
+
+            <div class="healing-indicator" v-if="gameState === 'playing' && isHealing">
+                回血中 +50/s
+            </div>
+
+            <div class="instructions" v-if="gameState === 'playing'">
+                WASD/鼠标移动 | 左键开火 | 右键保护罩
+            </div>
+
+            <div v-if="gameState === 'playing'"
+                 class="player"
+                 :style="{ left: playerX + 'px', top: playerY + 'px' }">
+                <div class="player-body">
+                    <div class="player-fuselage"></div>
+                    <div class="player-wing-left"></div>
+                    <div class="player-wing-right"></div>
+                    <div class="player-engine"></div>
+                </div>
+            </div>
+
+            <div v-if="gameState === 'playing' && shieldActive"
+                 class="shield"
+                 :style="{ 
+                     left: (playerX - 15) + 'px', 
+                     top: (playerY - 10) + 'px' 
+                 }">
+            </div>
+
+            <div v-for="enemy in enemies" :key="enemy.id"
+                 class="enemy"
+                 :style="{ left: enemy.x + 'px', top: enemy.y + 'px' }">
+                <div class="enemy-body">
+                    <div class="enemy-fuselage"></div>
+                    <div class="enemy-wing-left"></div>
+                    <div class="enemy-wing-right"></div>
+                </div>
+            </div>
+
+            <div v-for="bullet in playerBullets" :key="bullet.id"
+                 class="bullet"
+                 :style="{ left: bullet.x + 'px', top: bullet.y + 'px' }">
+            </div>
+
+            <div v-for="bullet in enemyBullets" :key="bullet.id"
+                 class="enemy-bullet"
+                 :style="{ left: bullet.x + 'px', top: bullet.y + 'px' }">
+            </div>
+
+            <div v-for="exp in explosions" :key="exp.id"
+                 class="explosion"
+                 :style="{ left: exp.x + 'px', top: exp.y + 'px' }">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                gameState: 'menu',
+                showRecords: false,
+                gameRecords: [],
+                
+                containerWidth: 800,
+                containerHeight: 600,
+                
+                playerX: 375,
+                playerY: 500,
+                playerWidth: 50,
+                playerHeight: 60,
+                
+                currentHealth: 800,
+                maxHealth: 800,
+                currentScore: 0,
+                
+                shieldActive: false,
+                shieldCooldown: 0,
+                shieldDuration: 3,
+                shieldCooldownMax: 20,
+                
+                lastDamageTime: 0,
+                timeSinceLastDamage: 0,
+                isHealing: false,
+                healingThreshold: 50,
+                
+                enemies: [],
+                playerBullets: [],
+                enemyBullets: [],
+                explosions: [],
+                
+                keys: { w: false, a: false, s: false, d: false },
+                mouseControl: false,
+                mouseX: 0,
+                mouseY: 0,
+                
+                gameLoop: null,
+                enemySpawnTimer: null,
+                bulletIdCounter: 0,
+                enemyIdCounter: 0,
+                explosionIdCounter: 0,
+                
+                playerDamage: 80,
+                enemyHealth: 200,
+                enemyDamage: 10,
+                scorePerKill: 50,
+                
+                playerBulletSpeed: 12,
+                enemyBulletSpeed: 5,
+                enemySpeed: 2,
+                
+                fireRate: 150,
+                lastFireTime: 0,
+                isFiring: false,
+                
+                enemyFireRate: 2000
+            },
+            computed: {
+                healthPercentage() {
+                    return (this.currentHealth / this.maxHealth) * 100;
+                },
+                shieldCooldownPercentage() {
+                    if (this.shieldActive) return 100;
+                    if (this.shieldCooldown > 0) {
+                        return ((this.shieldCooldownMax - this.shieldCooldown) / this.shieldCooldownMax) * 100;
+                    }
+                    return 100;
+                }
+            },
+            watch: {
+                currentHealth(newVal) {
+                    if (newVal <= 0 && this.gameState === 'playing') {
+                        this.gameOver();
+                    }
+                }
+            },
+            methods: {
+                loadRecords() {
+                    const records = localStorage.getItem('airstrike_records');
+                    if (records) {
+                        this.gameRecords = JSON.parse(records);
+                        this.gameRecords.sort((a, b) => b.score - a.score);
+                    }
+                },
+                saveRecord(score) {
+                    const record = {
+                        score: score,
+                        date: new Date().toLocaleString('zh-CN')
+                    };
+                    this.gameRecords.push(record);
+                    this.gameRecords.sort((a, b) => b.score - a.score);
+                    localStorage.setItem('airstrike_records', JSON.stringify(this.gameRecords));
+                },
+                startGame() {
+                    this.gameState = 'playing';
+                    this.showRecords = false;
+                    this.resetGame();
+                    this.startGameLoop();
+                },
+                resetGame() {
+                    this.playerX = 375;
+                    this.playerY = 500;
+                    this.currentHealth = 800;
+                    this.currentScore = 0;
+                    this.shieldActive = false;
+                    this.shieldCooldown = 0;
+                    this.lastDamageTime = Date.now();
+                    this.timeSinceLastDamage = 0;
+                    this.isHealing = false;
+                    this.enemies = [];
+                    this.playerBullets = [];
+                    this.enemyBullets = [];
+                    this.explosions = [];
+                    this.keys = { w: false, a: false, s: false, d: false };
+                    this.mouseControl = false;
+                    this.bulletIdCounter = 0;
+                    this.enemyIdCounter = 0;
+                    this.explosionIdCounter = 0;
+                    this.lastFireTime = 0;
+                    this.isFiring = false;
+                },
+                startGameLoop() {
+                    let lastTime = Date.now();
+                    
+                    const spawnEnemy = () => {
+                        if (this.gameState !== 'playing') return;
+                        this.spawnEnemy();
+                        const delay = 1000 + Math.random() * 2000;
+                        this.enemySpawnTimer = setTimeout(spawnEnemy, delay);
+                    };
+                    spawnEnemy();
+                    
+                    const loop = () => {
+                        if (this.gameState !== 'playing') return;
+                        
+                        const now = Date.now();
+                        const deltaTime = (now - lastTime) / 1000;
+                        lastTime = now;
+                        
+                        this.update(deltaTime);
+                        
+                        this.gameLoop = requestAnimationFrame(loop);
+                    };
+                    
+                    this.gameLoop = requestAnimationFrame(loop);
+                },
+                stopGameLoop() {
+                    if (this.gameLoop) {
+                        cancelAnimationFrame(this.gameLoop);
+                        this.gameLoop = null;
+                    }
+                    if (this.enemySpawnTimer) {
+                        clearTimeout(this.enemySpawnTimer);
+                        this.enemySpawnTimer = null;
+                    }
+                },
+                update(deltaTime) {
+                    this.updatePlayer(deltaTime);
+                    this.updateBullets(deltaTime);
+                    this.updateEnemies(deltaTime);
+                    this.updateEnemyBullets(deltaTime);
+                    this.checkCollisions();
+                    this.updateShield(deltaTime);
+                    this.updateHealing(deltaTime);
+                    this.autoFire(deltaTime);
+                },
+                updatePlayer(deltaTime) {
+                    const speed = 400 * deltaTime;
+                    
+                    if (this.mouseControl) {
+                        const targetX = this.mouseX - this.playerWidth / 2;
+                        const targetY = this.mouseY - this.playerHeight / 2;
+                        
+                        this.playerX += (targetX - this.playerX) * 0.2;
+                        this.playerY += (targetY - this.playerY) * 0.2;
+                    } else {
+                        if (this.keys.w) this.playerY -= speed;
+                        if (this.keys.s) this.playerY += speed;
+                        if (this.keys.a) this.playerX -= speed;
+                        if (this.keys.d) this.playerX += speed;
+                    }
+                    
+                    this.playerX = Math.max(0, Math.min(this.containerWidth - this.playerWidth, this.playerX));
+                    this.playerY = Math.max(0, Math.min(this.containerHeight - this.playerHeight, this.playerY));
+                },
+                spawnEnemy() {
+                    const x = Math.random() * (this.containerWidth - 45);
+                    const enemy = {
+                        id: ++this.enemyIdCounter,
+                        x: x,
+                        y: -50,
+                        width: 45,
+                        height: 50,
+                        health: this.enemyHealth,
+                        lastFireTime: Date.now()
+                    };
+                    this.enemies.push(enemy);
+                },
+                updateEnemies(deltaTime) {
+                    const now = Date.now();
+                    
+                    for (let i = this.enemies.length - 1; i >= 0; i--) {
+                        const enemy = this.enemies[i];
+                        enemy.y += this.enemySpeed;
+                        
+                        if (enemy.y > this.containerHeight) {
+                            this.enemies.splice(i, 1);
+                            continue;
+                        }
+                        
+                        if (now - enemy.lastFireTime > this.enemyFireRate) {
+                            this.enemyFire(enemy);
+                            enemy.lastFireTime = now;
+                        }
+                    }
+                },
+                enemyFire(enemy) {
+                    const bullet = {
+                        id: ++this.bulletIdCounter,
+                        x: enemy.x + enemy.width / 2 - 4,
+                        y: enemy.y + enemy.height,
+                        width: 8,
+                        height: 8
+                    };
+                    this.enemyBullets.push(bullet);
+                },
+                updateBullets(deltaTime) {
+                    for (let i = this.playerBullets.length - 1; i >= 0; i--) {
+                        const bullet = this.playerBullets[i];
+                        bullet.y -= this.playerBulletSpeed;
+                        
+                        if (bullet.y < -20) {
+                            this.playerBullets.splice(i, 1);
+                        }
+                    }
+                },
+                updateEnemyBullets(deltaTime) {
+                    for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+                        const bullet = this.enemyBullets[i];
+                        bullet.y += this.enemyBulletSpeed;
+                        
+                        if (bullet.y > this.containerHeight + 20) {
+                            this.enemyBullets.splice(i, 1);
+                        }
+                    }
+                },
+                checkCollisions() {
+                    for (let i = this.playerBullets.length - 1; i >= 0; i--) {
+                        const bullet = this.playerBullets[i];
+                        
+                        for (let j = this.enemies.length - 1; j >= 0; j--) {
+                            const enemy = this.enemies[j];
+                            
+                            if (this.isColliding(bullet, enemy)) {
+                                this.playerBullets.splice(i, 1);
+                                enemy.health -= this.playerDamage;
+                                
+                                if (enemy.health <= 0) {
+                                    this.createExplosion(enemy.x, enemy.y);
+                                    this.enemies.splice(j, 1);
+                                    this.currentScore += this.scorePerKill;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!this.shieldActive) {
+                        for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+                            const bullet = this.enemyBullets[i];
+                            const playerHitbox = {
+                                x: this.playerX,
+                                y: this.playerY,
+                                width: this.playerWidth,
+                                height: this.playerHeight
+                            };
+                            
+                            if (this.isColliding(bullet, playerHitbox)) {
+                                this.enemyBullets.splice(i, 1);
+                                this.takeDamage();
+                            }
+                        }
+                    }
+                    
+                    for (let i = this.enemies.length - 1; i >= 0; i--) {
+                        const enemy = this.enemies[i];
+                        const playerHitbox = {
+                            x: this.playerX,
+                            y: this.playerY,
+                            width: this.playerWidth,
+                            height: this.playerHeight
+                        };
+                        
+                        if (this.isColliding(enemy, playerHitbox)) {
+                            if (!this.shieldActive) {
+                                this.takeDamage();
+                            }
+                            this.createExplosion(enemy.x, enemy.y);
+                            this.enemies.splice(i, 1);
+                        }
+                    }
+                },
+                isColliding(rect1, rect2) {
+                    return rect1.x < rect2.x + rect2.width &&
+                           rect1.x + rect1.width > rect2.x &&
+                           rect1.y < rect2.y + rect2.height &&
+                           rect1.y + rect1.height > rect2.y;
+                },
+                takeDamage() {
+                    this.currentHealth = Math.max(0, this.currentHealth - this.enemyDamage);
+                    this.lastDamageTime = Date.now();
+                    this.timeSinceLastDamage = 0;
+                    this.isHealing = false;
+                },
+                createExplosion(x, y) {
+                    const explosion = {
+                        id: ++this.explosionIdCounter,
+                        x: x,
+                        y: y
+                    };
+                    this.explosions.push(explosion);
+                    
+                    setTimeout(() => {
+                        const index = this.explosions.findIndex(e => e.id === explosion.id);
+                        if (index !== -1) {
+                            this.explosions.splice(index, 1);
+                        }
+                    }, 500);
+                },
+                updateShield(deltaTime) {
+                    if (this.shieldActive) {
+                        this.shieldDuration -= deltaTime;
+                        if (this.shieldDuration <= 0) {
+                            this.shieldActive = false;
+                            this.shieldDuration = 3;
+                            this.shieldCooldown = this.shieldCooldownMax;
+                        }
+                    } else if (this.shieldCooldown > 0) {
+                        this.shieldCooldown -= deltaTime;
+                        if (this.shieldCooldown < 0) {
+                            this.shieldCooldown = 0;
+                        }
+                    }
+                },
+                updateHealing(deltaTime) {
+                    this.timeSinceLastDamage += deltaTime;
+                    
+                    if (this.timeSinceLastDamage >= this.healingThreshold && this.currentHealth < this.maxHealth) {
+                        this.isHealing = true;
+                        this.currentHealth = Math.min(this.maxHealth, this.currentHealth + 50 * deltaTime);
+                    } else {
+                        this.isHealing = false;
+                    }
+                },
+                autoFire(deltaTime) {
+                    const now = Date.now();
+                    if (this.isFiring && now - this.lastFireTime > this.fireRate) {
+                        this.playerFire();
+                        this.lastFireTime = now;
+                    }
+                },
+                playerFire() {
+                    const bullet = {
+                        id: ++this.bulletIdCounter,
+                        x: this.playerX + this.playerWidth / 2 - 3,
+                        y: this.playerY,
+                        width: 6,
+                        height: 20
+                    };
+                    this.playerBullets.push(bullet);
+                },
+                activateShield() {
+                    if (!this.shieldActive && this.shieldCooldown <= 0) {
+                        this.shieldActive = true;
+                        this.shieldDuration = 3;
+                    }
+                },
+                handleMouseMove(event) {
+                    if (this.gameState !== 'playing') return;
+                    
+                    const rect = this.$refs.gameContainer.getBoundingClientRect();
+                    this.mouseX = event.clientX - rect.left;
+                    this.mouseY = event.clientY - rect.top;
+                    this.mouseControl = true;
+                },
+                handleMouseDown(event) {
+                    if (this.gameState !== 'playing') return;
+                    
+                    if (event.button === 0) {
+                        this.isFiring = true;
+                        this.mouseControl = true;
+                    } else if (event.button === 2) {
+                        this.activateShield();
+                    }
+                },
+                handleKeyDown(event) {
+                    if (this.gameState !== 'playing') return;
+                    
+                    const key = event.key.toLowerCase();
+                    if (key in this.keys) {
+                        this.keys[key] = true;
+                        this.mouseControl = false;
+                    }
+                    
+                    if (key === ' ') {
+                        event.preventDefault();
+                        this.isFiring = true;
+                    }
+                },
+                handleKeyUp(event) {
+                    const key = event.key.toLowerCase();
+                    if (key in this.keys) {
+                        this.keys[key] = false;
+                    }
+                    if (key === ' ') {
+                        this.isFiring = false;
+                    }
+                },
+                gameOver() {
+                    this.stopGameLoop();
+                    this.saveRecord(this.currentScore);
+                    this.gameState = 'gameover';
+                },
+                backToMenu() {
+                    this.gameState = 'menu';
+                }
+            },
+            mounted() {
+                this.loadRecords();
+                
+                document.addEventListener('mouseup', (event) => {
+                    if (event.button === 0) {
+                        this.isFiring = false;
+                    }
+                });
+                
+                this.$refs.gameContainer.addEventListener('mouseleave', () => {
+                    this.isFiring = false;
+                });
+            },
+            beforeDestroy() {
+                this.stopGameLoop();
+            }
+        });
+    </script>
+</body>
+</html>
